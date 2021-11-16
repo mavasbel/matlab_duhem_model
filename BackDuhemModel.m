@@ -1,90 +1,86 @@
 %% Initialize
 % clear all
 close all
-% clc
+clc
 
-%% Create miller model global parameters
-% Ps = 21; Pr = 14; Ec = 10;
-% Ps = params(1); Pr = params(2); Ec = params(3);
-delta = Ec*( log((1+Pr/Ps)/(1-Pr/Ps)) )^(-1);
+%% Create model global parameters
+% Dahl parameters
+% dh_rho = 2;
+% dh_Fc = 0.25;
+% dh_r = 3/7;
+% f1 = @(u,x) dh_rho*(abs(1-x/dh_Fc)^dh_r)*sign(1-x/dh_Fc);
+% f2 = @(u,x) dh_rho*(abs(1+x/dh_Fc)^dh_r)*sign(1+x/dh_Fc);
 
-% Saturation curves
-PsatPlus   = @(E)  Ps*tanh(( E-Ec)/(2*delta));
-PsatMinus  = @(E) -Ps*tanh((-E-Ec)/(2*delta));
-
-% Derivatives of saturation curves
-dPsatPlus  = @(E) Ps*( sech(( E-Ec)/(2*delta)) ).^2 * (1/(2*delta));
-dPsatMinus = @(E) Ps*( sech((-E-Ec)/(2*delta)) ).^2 * (1/(2*delta));
-
-% Gamma term
-GammaPlus  = @(E,Pd) 1 - tanh(  ( (Pd -  PsatPlus(E))/( Ps-Pd ) ).^(1/2)  );
-GammaMinus = @(E,Pd) 1 - tanh(  ( (Pd - PsatMinus(E))/(-Ps-Pd ) ).^(1/2)  );
-% GammaPlus  = @(E,Pd) 1 - tanh(  (  abs((Pd -  PsatPlus(E))/( Ps-Pd ))  ).^(1/2)  );
-% GammaMinus = @(E,Pd) 1 - tanh(  (  abs((Pd - PsatMinus(E))/(-Ps-Pd ))  ).^(1/2)  );
-% GammaPlus  = @(E,Pd) 1 - tanh(  ( (Pd -  PsatPlus(E))/( Ps-Pd ) )  );
-% GammaMinus = @(E,Pd) 1 - tanh(  ( (Pd - PsatMinus(E))/(-Ps-Pd ) )  );
-
-% Duhem model f1 & f2 functions
-f1 = @(u,x)  GammaPlus(u,x) * dPsatPlus(u);
-f2 = @(u,x) GammaMinus(u,x) * dPsatMinus(u);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% bw_alpha = reg(1);
-% bw_beta = reg(2);
-% bw_zeta = reg(3);
+% Bouc-wen parameters 
+% Papers divergent parameters
+% bw_alpha = 0.1;
+% bw_beta = 0.1;
+% bw_zeta = -0.2;
 % bw_n = 3;
 % bw_eta = 1;
-% 
-% f1 = @(u,x) bw_eta*(bw_alpha - bw_beta*abs(x)^bw_n - bw_zeta*x*abs(x)^(bw_n-1));
-% f2 = @(u,x) bw_eta*(bw_alpha - bw_beta*abs(x)^bw_n + bw_zeta*x*abs(x)^(bw_n-1));
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% % Papers convergent parameters
+% bw_alpha = 1.0;
+% bw_beta = 1.0;
+% bw_zeta = 2.0;
+% bw_n = 3;
+% bw_eta = 1;
+
+bw_alpha = 10.0;
+bw_beta = 2.0;
+bw_zeta = -1;
+bw_n = 3;
+bw_eta = 0.1;
+
+(bw_alpha/(bw_beta+bw_zeta))^bw_n
+(bw_alpha/(bw_beta-bw_zeta))^bw_n
+
+f1 = @(u,x) bw_eta*(bw_alpha - bw_beta*abs(x)^bw_n - bw_zeta*x*abs(x)^(bw_n-1));
+f2 = @(u,x) bw_eta*(bw_alpha - bw_beta*abs(x)^bw_n + bw_zeta*x*abs(x)^(bw_n-1));
 
 % Create model
 duhemModel = DuhemModel(f1,f2);
-
-%% Create modified miller model global parameters
-% Vc = 1;
-% Vo = 1;
-% Vi = 1;
-% pupi = 1;
-% fup = @(V) 1/(    Vo*( 1+exp(-(V-Vc)/Vo) )    );
-% 
-% % Duhem model f1 & f2 functions
-% f1 = @(u,x) (1-x)*fup(u);
-% f2 = @(u,x) 1-f1(u,x);
-% 
-% % Create model
-% duhemModel = DuhemModel(f1,f2);
-
-%% Experiments
-% u = linspace(-50,50,1000);
-% yp = dPsatp(u);
-% ym = dPsatm(u);
-% plot(u,yp,u,ym);
-% plot(u,ym)
 
 %% Create plots
 
 % Create plot paramters and obtain anhysteresis curves
 hPad = 0.1; vPad = 0.1; 
 minHPad = 0.1; minVPad = 0.1; 
-autoAdjust = false;
-hGridSize = 500; hLims = [-1.0 1.0]*10; 
-vGridSize = 500; vLims = [-1.0 1.0]*5;
+autoAdjust = true;
+% hGridSize = 500; hLims = [-1.0 1.0]*1; 
+% vGridSize = 500; vLims = [-1 5]*1;
+hGridSize = 500; hLims = [-1.0 1.0]*1; 
+vGridSize = 500; vLims = [-1.0 1.0]*1;
+% hGridSize = 500; hLims = [-1.0 1.0]*5.0; 
+% vGridSize = 500; vLims = [-8.0 10.0]*1.0;
+% hGridSize = 500; hLims = [-1.0 1.0]*13.0; 
+% vGridSize = 500; vLims = [-15.0 11.0]*1.0;
+% hGridSize = 500; hLims = [-1.0 1.0]*5.0;  
+% vGridSize = 500; vLims = [-11.0 6.0]*1.0;
+% hGridSize = 800; hLims = [-1.0 1.0]*10; 
+% vGridSize = 800; vLims = [-5.0 12.0]*1;
+% hGridSize = 800; hLims = [min([curve1(:,1);curve2(:,1)]),...
+%                                 max([curve1(:,1);curve2(:,1)])];
+% vGridSize = 800; vLims = [min([curve1(:,2);curve2(:,2)]),...
+%                                 max([curve1(:,2);curve2(:,2)])];
 hRange = hLims(2)-hLims(1); vRange = vLims(2)-vLims(1);
 % [anHystCurves, avgHystCurves] = ...
 %     DuhemModel.findAnhysteresisCurve(duhemModel,...
-%     [hLims(1), hLims(2)],hGridSize,...
-%     [vLims(1), vLims(2)],vGridSize);
+%     [hLims(1)-hRange*hPad, hLims(2)+hRange*hPad],hGridSize,...
+%     [vLims(1)-vRange*vPad, vLims(2)+vRange*vPad],vGridSize);
+[anHystCurves, avgHystCurves] = ...
+    DuhemModel.findAnhysteresisCurve(duhemModel,...
+    [hLims(1), hLims(2)],hGridSize,...
+    [vLims(1), vLims(2)],vGridSize);
 figure; axHandler = axes(); hold on; % Create axes
-% if(exist('curve1','var'))% Plot level f1=0
-%     plot(axHandler,curve1(:,1),curve1(:,2),'r',...
-%         'DisplayName','$c_1(\upsilon)$'); hold on;
-% end
-% if(exist('curve2','var'))% Plot level f2=0
-%     plot(axHandler,curve2(:,1),curve2(:,2),'b',...
-%         'DisplayName','$c_2(\upsilon)$'); hold on;
-% end
+if(exist('curve1','var'))% Plot level f1=0
+    plot(axHandler,curve1(:,1),curve1(:,2),'r',...
+        'DisplayName','$c_1(\upsilon)$'); hold on;
+end
+if(exist('curve2','var'))% Plot level f2=0
+    plot(axHandler,curve2(:,1),curve2(:,2),'b',...
+        'DisplayName','$c_2(\upsilon)$'); hold on;
+end
 
 % for i=1:size(anHystCurves,2) % Plot anhysteresis curve
 %     lineHandler = plot(axHandler,...
@@ -114,38 +110,20 @@ axis([hLims(1)-hRange*hPad,hLims(2)+hRange*hPad,...
 xlabel('$u$','Interpreter','latex');
 ylabel('$y$','Interpreter','latex');
 
-% Plot saturations
-uSat = linspace(-500,500,2000);
-if(exist('PsatPlus','var'))
-    plot(uSat,PsatPlus(uSat),...
-        'Color','r',...
-        'LineWidth',1.2,...
-        'DisplayName','$P_{sat}^+$',...
-        'HandleVisibility','on');
-    plot(uSat,PsatMinus(uSat),...
-        'Color','b',...
-        'LineWidth',1.2,...
-        'DisplayName','$P_{sat}^-$',...
-        'HandleVisibility','on');
-% plot(uSat,dPsatPlus(uSat),...
-%     'Color','r',...
-%     'LineWidth',1.2,...
-%     'HandleVisibility','off');
-% plot(uSat,dPsatMinus(uSat),...
-%     'Color','b',...
-%     'LineWidth',1.2,...
-%     'HandleVisibility','off');
-end
-
 %%  Input creation
 
 % Simulation parameters for periodic input
-samplesPerCycle = 100; 
-cycles = 5;
-uMin = -2; 
-uMax =  2;
-x0 = 0;
-
+samplesPerCycle = 1000; 
+cycles = 3;
+% uMin = -12; 
+% uMax =  12;
+x0 = 0.5;
+uMin = -1; 
+uMax =  1;
+% x0 = dataHandler.outputSeq(1);
+% uMin = -10; 
+% uMax =  10;
+% 
 t0 = 0; tend = 5*cycles;
 uVec = [];
 for i=1:cycles
@@ -207,9 +185,6 @@ plot(uVec(1),xTime(1),'o',...
 %     'LineWidth',1.2,...
 %     'HandleVisibility','off');
 
-% Create data handler with simulation data
-% dataHandler = DataHandler(uVec, xTime, tTime);
-
 % Adjust plot
 % leg = legend(...
 %     'Interpreter','latex',...
@@ -257,6 +232,7 @@ function dyq = odeModel(tq,xq,tVec,uVec,duVec)
         f1 = evalin('base','f1');
         f2 = evalin('base','f2');
         duhemModel = DuhemModel(f1,f2);
+%         duhemModel = evalin('base', 'duhemModel');
     end
     [uq,duq] = odeuVecduVecSolver(tq,tVec,uVec,duVec);
     dyq = duhemModel.getdydt(uq,xq,duq);
