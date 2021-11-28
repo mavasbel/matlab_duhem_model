@@ -40,7 +40,7 @@ GammaMinus = @(E,Pd) 1 - (tanh(  (( (Pd - PsatMinus(E))./(-Ps-Pd ) )).^(1/2)  ))
 
 % % Scaled Duhem model f1 & f2 functions
 f1Fitted = @(v,z)    abs(GammaPlus(v,z) .* dPsatPlus(v));
-f2Fitted = @(v,z) abs((GammaMinus(v,z)) .* dPsatMinus(v));
+f2Fitted = @(v,z)   abs(GammaMinus(v,z) .* dPsatMinus(v));
 
 % % Duhem model f1 & f2 without scales
 f1 = @(u,y) ((inputScale/outputScale)*f1Fitted( inputTrans(u),outputTrans(y) ));
@@ -48,25 +48,6 @@ f2 = @(u,y) ((inputScale/outputScale)*f2Fitted( inputTrans(u),outputTrans(y) ));
 
 % Create model
 duhemModel = DuhemModel(f1,f2);
-
-%%
-% syms v z
-% % uSat = linspace(-1500,1500,1500)';
-% % finding = fminsearch(@(finding) ...
-% %     sum(       ( outputInvTrans(PsatPlus(inputTrans(uSat))) - finding(1)*tanh((uSat-finding(3))./(2*delta)) ).^2       ) ...
-% %     + sum(       ( delta - finding(3)*(log((1+finding(2)/finding(1))/(1-finding(2)/finding(1))))^(-1) ).^2       ) , [1000,2000,1234]);
-% % finding=[1,1]
-% % length(outputInvTrans(PsatPlus(inputTrans(uSat))))
-% % length(finding(1)*tanh((uSat-finding(2))./(2*delta)))
-% 
-% % pretty(vpa(simplify(f1(v,z)),4))
-% % pretty(vpa(simplify(f2(v,z)),4))
-% vpa(simplify(outputInvTrans(PsatPlus(inputTrans(v))),4))
-% vpa(simplify(outputInvTrans(PsatMinus(inputTrans(v))),4))
-
-% PsPlus = PsPlus/outputScale;
-% EcPlus = EcPlus/inputScale;
-% exp(EcPlus/deltaPlus)
 
 %% Asym miller model
 % PsPlus  = params(1); PrPlus  = params(2); EcPlus  = params(3);
@@ -168,11 +149,11 @@ end
 %     if(i>1) set(lineHandler,'handleVisibility','off'); end
 % end
 if(exist('dataHandler','var')) % Plot experimental data
-    plot(axHandler,...
-        inputInvTrans(dataHandler.inputSeq),...
-        outputInvTrans(dataHandler.outputSeq),...
-        'g','lineWidth',1.2,...
-        'DisplayName','Experimental data');
+    expDataPlot = plot(axHandler,...
+                        inputInvTrans(dataHandler.inputSeq),...
+                        outputInvTrans(dataHandler.outputSeq),...
+                        'g','lineWidth',1.2,...
+                        'DisplayName','Experimental data');
 end
 if(exist('PsatPlus','var')) % Plot saturations
     uSat = linspace(-3000,3000,3000);
@@ -193,126 +174,202 @@ autoAdjust = false;
 hPad = 0.1; vPad = 0.1; 
 minHPad = 0.1; minVPad = 0.1; 
 hPlotLims = [-1.0 1.0]*1500; 
-vPlotLims = [-40 60]*1;
+vPlotLims = [-35 52]*1;
 hPlotRange = hPlotLims(2)-hPlotLims(1); vPlotRange = vPlotLims(2)-vPlotLims(1);
 axis([hPlotLims(1)-hPlotRange*hPad,hPlotLims(2)+hPlotRange*hPad,...
       vPlotLims(1)-vPlotRange*vPad,vPlotLims(2)+vPlotRange*vPad]);
 xlabel('$u$','Interpreter','latex');
 ylabel('$y$','Interpreter','latex');
 
-%%  Input creation
-
-% Parameters for periodic input
-samplesPerCycle = 1000;
-cycles = 10;
-% uMin = -1500; 
-% uMax =  1500;
-% x0 =-20;
-uMin = inputInvTrans(dataHandler.inputMin);
-uMax = inputInvTrans(dataHandler.inputMax);
-x0 = outputInvTrans(dataHandler.outputSeq(1));
-t0 = 0; tend = samplesPerCycle*cycles;
-uVec = [];
-for i=1:cycles
-    uVec = [uVec;linspace(uMax,uMin,samplesPerCycle)'];
-    uVec = [uVec;linspace(uMin,uMax,samplesPerCycle)'];
-%     uVec = [uVec;linspace(uMax,uMin,samplesPerCycle)'];
-end
-uVec = circshift(uVec,samplesPerCycle/2);
-tVec = linspace(t0,tend,2*samplesPerCycle*cycles)';
-duVec = [0;diff(uVec)./diff(tVec)];
-
-% Parameters for fading triangular input
-% samples = 1000;
-% t0 = 0; tend = 60;
-% x0 = outputInvTrans(dataHandler.outputSeq(1));
-% % peaks = [-3 2.8 -2.6 2.4 -2.2 2.0 -1.8 1.6 -1.4];
-% % peaks = [0 10 0 -10 0 8 0 -8 0 5 0 -5 0 3 0 -3 0];
-% peaks = [0 5 0 -5 0 3.741 0 -3.659 0 2.796 0 -2.812 0];
-% uVec = [];
-% for i=1:length(peaks)-1
-%     uVec = [uVec;linspace(peaks(i),peaks(i+1),samples)'];
-% end
-% tVec = linspace( t0,tend,samples*(length(peaks)-1) )';
-% uVec = uVec/inputScale;
-% duVec = [0;diff(uVec)./diff(tVec)];
-
-%% Simulation ode
-
 % Create animated plot handlers and invoke ode
-% if (exist('anLineHand','var')); clearpoints(anLineHand); end;
-anLineHand1 = animatedline(axHandler,...
+anLineHand = animatedline(axHandler,...
     'LineWidth',1.2,...
     'Color','black',...,
     'DisplayName','Duhem model',...
     'HandleVisibility','on');
-anLineHand2 = animatedline(axHandler,...
-    'LineWidth',1.2,...
-    'Color','magenta',...,
-    'DisplayName','Convex output',...
-    'HandleVisibility','off');
-odeOutFunc = @(tq,xq,flag)odeDrawing(tq,xq,flag,...
-    tVec,uVec,duVec,...
-    autoAdjust,hPad,vPad,minHPad,minVPad,...
-    anLineHand1,...
-    anLineHand2);
-[tTime,xTime] = ode113(...
-    @(tq,xq)odeModel(tq,xq,tVec,uVec,duVec),...
-    tVec,x0,...
-    odeset(...
-        'OutputFcn',odeOutFunc,...
+
+%% Create ode params
+odeOpts = odeset(...
         'NormControl','off',...
         'Reltol',1e-5,...
         'AbsTol',1e-6,...
         'Refine',1,...
         'MaxStep',10,...
-        'Stats','on'));
+        'Stats','off');
 
-% Mark initial and final
-plot(uVec(1),xTime(1),'o',...
-    'Color','black',...
-    'LineWidth',1.2,...
-    'HandleVisibility','off');
-plot(uVec(end),xTime(end),'x',...
-    'Color','black',...
-    'LineWidth',1.2,...
-    'HandleVisibility','off');
+%% Initialization
 
-% Create data handler with simulation data
-dataHandlerSim = DataHandler(uVec, xTime, tTime);
+% Parameters for periodic input
+samples = 5000; cycles = 1;
+uMax = inputInvTrans(dataHandler.inputMax);
+uMin = inputInvTrans(dataHandler.inputMin);
 
-% Adjust plot
-% leg = legend(...
-%     'Interpreter','latex',...
-%     'Location','southeast');
-leg = legend(...
-    'Interpreter','latex',...
-    'Location','northeast');
+uVec = [linspace(uMax,uMin,samples)';
+        linspace(uMin,uMax,samples)'];
+uVec = circshift(uVec,samples/2);
+tVec = linspace(0,1,samples*2)';
+duVec = [0;diff(uVec)./diff(tVec)];
 
-%% Ode plotting functions
+odeOpts = odeset(odeOpts,...
+        'OutputFcn',@(tq,xq,flag)odeDrawing(tq,xq,flag,...
+        tVec,uVec,duVec,...
+        autoAdjust,hPad,vPad,minHPad,minVPad,...
+        anLineHand));
+xVec = 10;%outputInvTrans(dataHandler.outputSeq(1));
+for i=1:5
+    [tVec,xVec] = ode113(@(tq,xq)odeModel(tq,xq,tVec,uVec,duVec),...
+                        tVec,xVec(end),odeOpts);
+end
+
+% Find the values of remnant max and remnant min and set reference
+odeOpts = odeset(odeOpts,'OutputFcn',@(tq,xq,flag)0);
+tBaseAsc = linspace(0,1,samples)';
+uBaseAsc = linspace(uMin,uMax,samples)';
+duBaseAsc = [0;diff(uBaseAsc)./diff(tBaseAsc)];
+[tBaseAsc,xBaseAsc] = ode113(...
+        @(tq,xq)odeModel(tq,xq,tBaseAsc,uBaseAsc,duBaseAsc),...
+        tBaseAsc,min(xVec),odeOpts);
+tBaseDesc = linspace(0,1,samples)';
+uBaseDesc = linspace(uMax,uMin,samples)';
+duBaseDesc = [0;diff(uBaseDesc)./diff(tBaseDesc)];
+[tBaseDesc,xBaseDesc] = ode113(...
+        @(tq,xq)odeModel(tq,xq,tBaseDesc,uBaseDesc,duBaseDesc),...
+        tBaseDesc,max(xVec),odeOpts);
+[~,idxAsc] = min(abs(uBaseAsc-0));
+[~,idxDesc] = min(abs(uBaseDesc-0));
+remnantMin = xBaseAsc(idxAsc);
+remnantMax = xBaseDesc(idxDesc);
+
+% Plot base curve
+plot(axHandler,uBaseAsc,xBaseAsc,'--m','LineWidth',1.75);
+plot(axHandler,uBaseDesc,xBaseDesc,'--m','LineWidth',1.75);
+plot(0,remnantMin,'om','LineWidth',1.75,'markerSize',4)
+plot(0,remnantMax,'om','LineWidth',1.75,'markerSize',4)
+delete(expDataPlot)
+
+% Set control parameters
+ref = max([min([12, remnantMax]),remnantMin]);
+errorThreshold = 0.001;
+iterationLimit = 1000;
+
+%% Control loop
+
+% Loops
+remnants = remnantMin;
+errors = ref-remnants;
+amps = 500;
+iter = 1;
+uMat = [];
+xMat = [];
+clearpoints(anLineHand)
+while(true)
+    % Print iteration number
+    disp('-------------------------')
+    disp(['Iteration: ', num2str(iter)])
+    disp(['Pulse Amplitude: ', num2str(amps(end))])
+    
+    % Ode solver
+    [uVec, duVec, tVec] = generatePulse(amps(end), samples);
+    odeOpts = odeset(odeOpts,...
+        'OutputFcn',@(tq,xq,flag)odeDrawing(tq,xq,flag,...
+        tVec,uVec,duVec,...
+        autoAdjust,hPad,vPad,minHPad,minVPad,...
+        anLineHand));
+    [tVec,xVec] = ode113(...
+            @(tq,xq)odeModel(tq,xq,tVec,uVec,duVec),...
+            tVec,xVec(end),odeOpts);
+    
+    % Store simulation results
+    uMat = [uMat, uVec(:)];
+    xMat = [xMat, xVec(:)];
+	remnants(end+1) = xVec(end);
+    errors(end+1) = ref-xVec(end);
+    
+    % Print final output and error
+    disp(['Final Output: ', num2str(remnants(end))])
+    disp(['Error: ', num2str(errors(end))])
+    
+    % Break cycle condition
+    if abs(errors(end))<=errorThreshold
+        disp('-------------------------')
+        disp('Error threshold achieved')
+        disp('-------------------------')
+        break
+    elseif iter>=iterationLimit
+        disp('-------------------------')
+        disp('Iterations limit achieved!')
+        disp('-------------------------')
+        break
+    end
+    
+    % Find reset curve and amplitude
+    odeOpts = odeset(odeOpts,'OutputFcn',@(tq,xq,flag)0);
+    tResAsc = linspace(0,1,samples)';
+    uResAsc = linspace(0,uMax,samples)';
+    duResAsc = [0;diff(uResAsc)./diff(tResAsc)];
+    [tResAsc,xResAsc] = ode113(...
+            @(tq,xq)-odeModel(tq,xq,tResAsc,uResAsc,-duResAsc),...
+            tResAsc,xVec(end),odeOpts);
+    tResDesc = linspace(0,1,samples)';
+    uResDesc = linspace(0,uMin,samples)';
+    duResDesc = [0;diff(uResDesc)./diff(tResDesc)];
+    [tResDesc,xResDesc] = ode113(...
+            @(tq,xq)odeModel(tq,xq,tResDesc,uResDesc,duResDesc),...
+            tResDesc,xVec(end),odeOpts);
+    xRes = interp1([wrev(uResDesc);uResAsc(2:end)],[wrev(xResDesc);xResAsc(2:end)],uBaseAsc);
+    resetCurve = plot(axHandler,uBaseAsc,xRes,'--b','LineWidth',1.5);
+    [~,idx] = min(abs(xRes(1:end/2)-xBaseAsc(1:end/2)));
+    resetAmp = uBaseAsc(idx);
+    disp(['Reset amp: ', num2str(resetAmp)])
+    
+    % Apply reset
+    [uVec, duVec, tVec] = generatePulse(resetAmp, samples);
+    odeOpts = odeset(odeOpts,...
+        'OutputFcn',@(tq,xq,flag)odeDrawing(tq,xq,flag,...
+        tVec,uVec,duVec,...
+        autoAdjust,hPad,vPad,minHPad,minVPad,...
+        anLineHand));
+    [tVec,xVec] = ode113(...
+            @(tq,xq)odeModel(tq,xq,tVec,uVec,duVec),...
+            tVec,remnants(end),odeOpts);
+    delete(resetCurve)
+    
+    % Compute next amp and update iteration counter 
+    amps(end+1) = amps(end) + 25*errors(end);
+    iter = iter+1;
+end
+
+%% Auxiliary functions
+function [uVec, duVec, tVec] = generatePulse(pulseAmp, samples)
+    timesVals = [0; 0.5; 1.0];
+    uVals = [0; pulseAmp; 0];
+    
+    tVec = linspace(0, timesVals(end), samples);
+    uVec = interp1(timesVals, uVals, tVec);
+    duVec = [0,diff(uVec)./diff(tVec)];
+    
+    tVec = tVec(:);
+    uVec = uVec(:);
+    duVec = duVec(:);
+end
 
 function output = odeDrawing(tq,xq,flag,...
     tVec,uVec,duVec,...
     autoAdjust,hPad,vPad,minHPad,minVPad,...
-    anLineHand1,...
-    anLineHand2)
+    anLineHand)
 
-%     conv = @(x) 0.2*(0.7*x.^2 - 2*x - 10);
     if strcmp(flag,'init')
         [uq,duq] = odeuVecduVecSolver(tq(1),tVec,uVec,duVec);
-        addpoints(anLineHand1,uq,xq(1,:));
-%         addpoints(anLineHand2,uq,conv(xq(1,:)));
+        addpoints(anLineHand,uq,xq(1,:));
     elseif strcmp(flag,'done')
     else
         [uq,duq] = odeuVecduVecSolver(tq,tVec,uVec,duVec);
-        addpoints(anLineHand1,uq,xq);
-%         addpoints(anLineHand2,uq,conv(xq));
+        addpoints(anLineHand,uq,xq);
     end
     if(autoAdjust)
-        autoAdjustPlot(anLineHand1,hPad,vPad,minHPad,minVPad);
+        autoAdjustPlot(anLineHand,hPad,vPad,minHPad,minVPad);
     end
     drawnow limitrate;
-%     drawnow;
     output = 0;
 end
 
